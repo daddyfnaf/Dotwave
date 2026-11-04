@@ -1,0 +1,65 @@
+namename: Build Dotwave Widgets
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Extract project archive
+        run: |
+          unzip -q DotwaveWidgets-source.zip -d extracted
+          find extracted -maxdepth 3 -type f | head -80
+
+      - name: Locate Android project
+        id: project
+        run: |
+          PROJECT_DIR="$(find extracted -name settings.gradle -o -name settings.gradle.kts | head -1 | xargs dirname)"
+
+          if [ -z "$PROJECT_DIR" ]; then
+            echo "Could not find Android project!"
+            exit 1
+          fi
+
+          echo "dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+          echo "Project found: $PROJECT_DIR"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools'
+
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager "platforms;android-36" "build-tools;36.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.6.0'
+
+      - name: Build debug APK
+        run: |
+          gradle -p "${{ steps.project.outputs.dir }}" assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Dotwave-Widgets-APK
+          path: "${{ steps.project.outputs.dir }}/**/build/outputs/apk/debug/*.apk"
+          if-no-files-found: error
+          retention-days: 7
