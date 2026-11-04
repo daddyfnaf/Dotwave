@@ -1,4 +1,4 @@
-namename: Build Dotwave Widgets
+name: Build Dotwave Widgets
 
 on:
   workflow_dispatch:
